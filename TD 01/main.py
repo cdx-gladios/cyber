@@ -22,7 +22,7 @@ def scan_port(host, port):
         #Gestion des erreurs
         print(f"[-] Erreur sur le port {port}: {e}")
     # On demande a l'utilisateur l'adresse ip de la cible
-target = input("Entrez l'ip a scanner")
+target = input("Entrez l'ip a scanner :")
 
 #On demande la plage d'adresse a scanner
 start_port = int(input("Port de debut"))
