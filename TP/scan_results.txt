@@ -1,2 +1,6 @@
-Port 22: U1NILTIuMC1PcGVuU1NIXzguOXAxIFVidW50dS0zdWJ1bnR1MC4xMQ==
-Port 80: SFRUUC8xLjEgNDAwIEJhZCBSZXF1ZXN0DQpEYXRlOiBUdWUsIDAxIEFwciAyMDI1IDA5OjQ1OjE5IEdNVA0KU2VydmVyOiBBcGFjaGUvMi40LjUyIChVYnVudHUpDQpDb25uZWN0aW9uOiBjbG9zZQ0KQ29udGVudC1UeXBlOiB0ZXh0L2h0bWw7IGNoYXJzZXQ9aXNvLTg4NTktMQ==
+[+] Port 22 ouvert – Serveur SSH détecté : SSH-2.0-OpenSSH_8.9p1 Ubuntu-3ubuntu0.11
+[+] Port 80 ouvert – Serveur Web détecté : HTTP/1.1 400 Bad Request
+Date: Tue, 01 Apr 2025 09:54:11 GMT
+Server: Apache/2.4.52 (Ubuntu)
+Connection: close
+Content-Type: text/html; charset=iso-8859-1

@@ -25,6 +25,19 @@ def grab_banner(ip, port, results):
         print(f"[-] Erreur sur le port {port}: {e}")
 
 
+def identify_service(banner):
+    if "SSH" in banner:
+        return "Serveur SSH détecté"
+    elif "HTTP" in banner:
+        return "Serveur Web détecté"
+    elif "FTP" in banner:
+        return "Serveur FTP détecté"
+    elif "SMTP" in banner:
+        return "Serveur Mail détecté"
+    else:
+        return "Service inconnu"
+
+
 def scan_ports(ip, start_port, end_port):
     threads = []
     results = []
@@ -39,16 +52,16 @@ def scan_ports(ip, start_port, end_port):
     for thread in threads:
         thread.join()
 
-    for port, encoded_banner in results:
-        try:
-            decoded_banner = base64.b64decode(encoded_banner).decode()
-            print(f"[+] Port {port} ouvert – Service détecté : {decoded_banner}")
-        except Exception:
-            print(f"[+] Port {port} ouvert – Service détecté (Base64) : {encoded_banner}")
-
     with open("scan_results.txt", "w") as f:
         for port, encoded_banner in results:
-            f.write(f"Port {port}: {encoded_banner}\n")
+            try:
+                decoded_banner = base64.b64decode(encoded_banner).decode()
+                service = identify_service(decoded_banner)
+                output = f"[+] Port {port} ouvert – {service} : {decoded_banner}"
+            except Exception:
+                output = f"[+] Port {port} ouvert – Service détecté (Base64) : {encoded_banner}"
+            print(output)
+            f.write(output + "\n")
 
 
 if __name__ == "__main__":
