@@ -1,48 +1,54 @@
-# On importe le module socket pour la communication réseau
 import socket
-
-# On importe threading pour exécuter plusieurs tâches en parallèle (multithreading)
 import threading
+import base64
 
 
-# Définition de la fonction qui va tester un port spécifique sur une adresse IP donnée
-def scan_port(host, port):
+def grab_banner(ip, port, results):
     try:
-        # Création d'un objet socket (AF_INET = IPv4, SOCK_STREAM = TCP)
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-        # On définit un délai de 1 seconde pour éviter les blocages (timeout si pas de réponse rapide)
         sock.settimeout(1)
 
-        # Tentative de connexion sur le port (connect_ex retourne 0 si la connexion réussit)
-        result = sock.connect_ex((host, port))
+        if sock.connect_ex((ip, port)) == 0:
+            try:
+                banner = ""
+                if port in [80, 443]:
+                    sock.send(b'HEAD / HTTP/1.1\r\nHost: \r\n\r\n')
+                banner = sock.recv(1024).decode().strip()
+                if banner:
+                    encoded_banner = base64.b64encode(banner.encode()).decode()
+                    results.append(f"[+] Port {port} ouvert – Service détecté : {encoded_banner}")
+            except Exception as e:
+                results.append(f"[+] Port {port} ouvert – Bannière non récupérable: {e}")
 
-        # Si le port est ouvert (result == 0), on l'affiche
-        if result == 0:
-            print(f"[+] Port {port} ouvert")
-
-        # On ferme la socket (bonne pratique)
         sock.close()
-
     except Exception as e:
-        # Gestion d'erreurs (affichage si un problème survient)
         print(f"[-] Erreur sur le port {port}: {e}")
 
 
-# On demande à l'utilisateur l'adresse IP de la cible
-target = input("Entrez l'adresse IP à scanner : ")
+def scan_ports(ip, start_port, end_port):
+    threads = []
+    results = []
 
-# On demande les bornes de ports à scanner (ex : de 1 à 1024)
-start_port = int(input("Port de début : "))
-end_port = int(input("Port de fin : "))
+    print(f"\n[***] Scan de {ip} sur les ports {start_port} à {end_port} [***]\n")
 
-# On informe l'utilisateur qu'on commence le scan
-print(f"\n[***] Scan de {target} sur les ports {start_port} à {end_port} [***]\n")
+    for port in range(start_port, end_port + 1):
+        thread = threading.Thread(target=grab_banner, args=(ip, port, results))
+        threads.append(thread)
+        thread.start()
 
-# Pour chaque port dans l'intervalle choisi
-for port in range(start_port, end_port + 1):
-    # On crée un thread (exécution parallèle) pour chaque scan de port
-    t = threading.Thread(target=scan_port, args=(target, port))
+    for thread in threads:
+        thread.join()
 
-    # On démarre le thread
-    t.start()
+    for result in results:
+        print(result)
+
+    with open("scan_results.txt", "w") as f:
+        for result in results:
+            f.write(result + "\n")
+
+
+if __name__ == "__main__":
+    target_ip = input("Entrez l'adresse IP à scanner : ")
+    start_port = int(input("Port de début : "))
+    end_port = int(input("Port de fin : "))
+    scan_ports(target_ip, start_port, end_port)
