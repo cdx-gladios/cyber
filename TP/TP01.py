@@ -16,9 +16,9 @@ def grab_banner(ip, port, results):
                 banner = sock.recv(1024).decode().strip()
                 if banner:
                     encoded_banner = base64.b64encode(banner.encode()).decode()
-                    results.append(f"[+] Port {port} ouvert – Service détecté : {encoded_banner}")
+                    results.append((port, encoded_banner))
             except Exception as e:
-                results.append(f"[+] Port {port} ouvert – Bannière non récupérable: {e}")
+                results.append((port, f"Bannière non récupérable: {e}"))
 
         sock.close()
     except Exception as e:
@@ -39,12 +39,16 @@ def scan_ports(ip, start_port, end_port):
     for thread in threads:
         thread.join()
 
-    for result in results:
-        print(result)
+    for port, encoded_banner in results:
+        try:
+            decoded_banner = base64.b64decode(encoded_banner).decode()
+            print(f"[+] Port {port} ouvert – Service détecté : {decoded_banner}")
+        except Exception:
+            print(f"[+] Port {port} ouvert – Service détecté (Base64) : {encoded_banner}")
 
     with open("scan_results.txt", "w") as f:
-        for result in results:
-            f.write(result + "\n")
+        for port, encoded_banner in results:
+            f.write(f"Port {port}: {encoded_banner}\n")
 
 
 if __name__ == "__main__":
