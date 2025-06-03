@@ -1,30 +1,43 @@
-from utils import parse_apache_log_line, detect_suspicious_activity
+# analyzer.py
+import re
+from utils import load_log_file, save_report
+from collections import defaultdict
 
-def read_log_file(filepath):
-    with open(filepath, "r") as f:
-        return [line.strip() for line in f.readlines()]
+log_path = "logs/access.log"
+lines = load_log_file(log_path)
 
-def generate_report(suspicious_data, output_file="report.txt"):
-    with open(output_file, "w") as f:
-        f.write("=== RAPPORT DE SÉCURITÉ ===\n\n")
+suspicious_ips = defaultdict(int)
+denied_access = []
+scan_detected = []
 
-        f.write("Brute-force détecté:\n")
-        for ip, count in suspicious_data["brute_force"].items():
-            f.write(f"- {ip} : {count} tentatives\n")
+for line in lines:
+    # Exemple log Apache : 192.168.1.1 - - [01/Jun/2025:10:15:32 +0200] "GET /admin HTTP/1.1" 403 721
+    match = re.search(r'(?P<ip>\d+\.\d+\.\d+\.\d+).*\[(?P<datetime>[^\]]+)\] "(?P<method>GET|POST) (?P<url>.*?) HTTP/1.[01]" (?P<status>\d+)', line)
+    if match:
+        ip = match.group('ip')
+        url = match.group('url')
+        status = int(match.group('status'))
 
-        f.write("\nAccès interdits (403):\n")
-        for entry in suspicious_data["forbidden"]:
-            f.write(f"- {entry['ip']} à {entry['datetime']} → {entry['request']}\n")
+        if status == 403:
+            denied_access.append((ip, url))
+            suspicious_ips[ip] += 1
 
-        f.write("\nScans potentiels:\n")
-        for ip, count in suspicious_data["scans"].items():
-            f.write(f"- {ip} : {count} requêtes suspectes\n")
+        if "wp-login" in url or "phpmyadmin" in url:
+            scan_detected.append((ip, url))
+            suspicious_ips[ip] += 1
 
-def main():
-    lines = read_log_file("logs/access.log")
-    parsed_logs = [parse_apache_log_line(line) for line in lines if parse_apache_log_line(line)]
-    suspicious_data = detect_suspicious_activity(parsed_logs)
-    generate_report(suspicious_data)
+# Génération du rapport
+report_lines = []
 
-if __name__ == "__main__":
-    main()
+report_lines.append(" Analyse de logs : Résumé")
+report_lines.append(f"Nombre total de lignes : {len(lines)}")
+report_lines.append(f"Nombre d’accès interdits (403) : {len(denied_access)}")
+report_lines.append(f"Scans détectés (URLs sensibles) : {len(scan_detected)}")
+
+report_lines.append("\n IPs suspectes (plus de 3 événements)")
+for ip, count in suspicious_ips.items():
+    if count > 3:
+        report_lines.append(f" - {ip} : {count} tentatives")
+
+save_report("report.txt", report_lines)
+print(" Rapport généré dans 'report.txt'")
